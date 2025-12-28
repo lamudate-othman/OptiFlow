@@ -167,15 +167,15 @@ function updateMatrixDisplay() {
     
     const defaultMatrix = [
         null,
-        [null, 4, 8, 3],
-        [null, 3, 5, 7],
-        [null, 5, 2, 4],
-        [null, 2, 4, 7],
-        [null, 7, 3, 5],
-        [null, 3, 7, 6],
-        [null, 6, 6, 6],
-        [null, 7, 8, 8],
-        [null, 5, 9, 3]
+        [0, 4, 8, 3],
+        [0, 3, 5, 7],
+        [2, 5, 2, 4],
+        [1, 2, 4, 7],
+        [3, 7, 3, 5],
+        [2, 3, 7, 6],
+        [1, 6, 6, 6],
+        [0, 7, 8, 8],
+        [2, 5, 9, 3]
     ];
     
     for (let j = 1; j <= appState.numJobs; j++) {
