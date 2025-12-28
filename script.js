@@ -671,15 +671,20 @@ function displayTFRTAR(solution) {
             Cj = prevEnd;
         }
         const Fj = Cj;
-        totalTardiness += rj;
-        metrics.jobMetrics.push({ job: j, rj, Sj: Sj || 0, Cj, flowTime: Fj, waitingTime: Wj, sumProcessing: sumP });
+        // Compute lateness Lj = max(0, Cj - dj) if dj is enabled
+        let Lj = 0;
+        if (appState.enableDjList && appState.djValues[j] !== undefined) {
+            Lj = Math.max(0, Cj - appState.djValues[j]);
+            totalTardiness += Lj;
+        }
+        metrics.jobMetrics.push({ job: j, rj, Sj: Sj || 0, Cj, flowTime: Fj, waitingTime: Wj, sumProcessing: sumP, Lj });
         metrics.totalFlowTime += Fj;
         metrics.totalWaitingTime += Wj;
     }
     metrics.totalTardiness = totalTardiness;
 
     // Render per-job metric cards: rj, Sj, Cj, TWTj, TFT
-    let metricsHtml = '<div style="margin-bottom:12px;"><strong>TFT (Total Flow Time):</strong> ' + metrics.totalFlowTime + ' | <strong>TT (Total Tardiness):</strong> ' + metrics.totalTardiness + '</div>';
+    let metricsHtml = '<div style="margin-bottom:12px;"><strong>TFT (Total Flow Time):</strong> ' + metrics.totalFlowTime + ' | <strong>TT (Total Tardiness = Σ Lj):</strong> ' + metrics.totalTardiness + '</div>';
     if (appState.enableTTList && Object.keys(appState.ttValues).length > 0) {
         metricsHtml += '<div style="margin-bottom:12px; padding:8px; background:#fff3cd; border-radius:6px;"><strong>TT List Input:</strong> ';
         for (const jobId in appState.ttValues) {
@@ -711,8 +716,7 @@ function displayTFRTAR(solution) {
         }
         if (appState.enableDjList && appState.djValues[jm.job] !== undefined) {
             const dj = appState.djValues[jm.job];
-            const tardiness = Math.max(0, jm.Cj - dj);
-            metricsHtml += `<div class="metric-small" style="color:#0dcaf0;"><strong>dj</strong>: ${dj} | <strong>Lj</strong>: ${tardiness}</div>`;
+            metricsHtml += `<div class="metric-small" style="color:#0dcaf0;"><strong>dj</strong>: ${dj} | <strong>Lj</strong>: ${jm.Lj}</div>`;
         }
         metricsHtml += `
                     </div>
