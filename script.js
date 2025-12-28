@@ -8,7 +8,7 @@ const jobColors = [
 // State management
 let appState = {
     numMachines: 3,
-    numJobs: 5,
+    numJobs: 9,
     matrix: null,
     bestSolution: null,
     allSolutions: []
@@ -88,10 +88,23 @@ function updateMatrixDisplay() {
     
     html += `</tr></thead><tbody>`;
     
+    const defaultMatrix = [
+        null,
+        [null, 4, 8, 3],
+        [null, 3, 5, 7],
+        [null, 5, 2, 4],
+        [null, 2, 4, 7],
+        [null, 7, 3, 5],
+        [null, 3, 7, 6],
+        [null, 6, 6, 6],
+        [null, 7, 8, 8],
+        [null, 5, 9, 3]
+    ];
+    
     for (let j = 1; j <= appState.numJobs; j++) {
         html += `<tr><td><strong>Tâche ${j}</strong></td>`;
         for (let m = 1; m <= appState.numMachines; m++) {
-            const value = Math.floor(Math.random() * 40) + 5;
+            const value = defaultMatrix[j][m];
             html += `
                 <td>
                     <input 
@@ -146,7 +159,7 @@ function calculateCDS() {
             for (let m = 1; m <= k; m++) {
                 A[j] += appState.matrix[j][m];
             }
-            for (let m = k + 1; m < appState.numMachines; m++) {
+            for (let m = k + 1; m <= appState.numMachines; m++) {
                 B[j] += appState.matrix[j][m];
             }
         }
@@ -305,106 +318,131 @@ function displayResults() {
         
         document.getElementById('bestSolutionContainer').innerHTML = bannerHtml;
         
+        // Debug: log best solution to console
+        console.log('=== BEST SOLUTION ===');
+        console.log('Iteration K:', best.iteration);
+        console.log('Makespan (Cmax):', best.makespan);
+        console.log('Job Order:', best.order);
+        console.log('Completion Matrix:');
+        console.table(best.completion);
+        console.log('Virtual A (first k machines):', best.A);
+        console.log('Virtual B (machines k+1 to M):', best.B);
+        console.log('All solutions:', appState.allSolutions);
+        
         // Display Gantt chart
         displayGanttChart(best);
     }
 }
 
-// ============ GANTT CHART ============
+// ============ GANTT CHART with Frappe ============
 function displayGanttChart(solution) {
     const ganttSection = document.getElementById('ganttSection');
     ganttSection.style.display = 'block';
     
-    // Generate legend
-    let legendHtml = '<div class="legend-grid">';
+    // Clear previous Gantt if exists
+    const container = document.getElementById('ganttChart');
+    container.innerHTML = '';
+    
+    // Prepare task data for Frappe Gantt
+    const ganttTasks = [];
+    const colors = ['#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9'];
+    const jobColorMap = {};
+    
+    // Create color map for jobs
     for (let j = 1; j <= appState.numJobs; j++) {
-        legendHtml += `
-            <div class="legend-item">
-                <div class="legend-color" style="background-color: ${jobColors[j % jobColors.length]};"></div>
-                <div class="legend-label">Tâche ${j}</div>
-            </div>
-        `;
+        jobColorMap[j] = colors[(j - 1) % colors.length];
     }
-    legendHtml += '</div>';
-    document.getElementById('legend').innerHTML = legendHtml;
     
-    // Generate Gantt chart with professional styling
-    let ganttHtml = '<div class="gantt-container">';
-    const maxTime = solution.makespan;
-    const pixelsPerUnit = Math.max(400 / maxTime, 12);
-    
-    // Header with time scale
-    ganttHtml += `<div class="gantt-header">
-        <div class="gantt-machine-col-header">Machine / Ressource</div>
-        <div class="gantt-timeline-header" style="width: ${maxTime * pixelsPerUnit + 40}px;">
-            <div class="time-scale">`;
-    
-        const timeStep = Math.ceil(maxTime / 12);
-        for (let t = 0; t <= maxTime; t += timeStep) {
-            ganttHtml += `<div class="time-marker" style="left: ${t * pixelsPerUnit}px;"><span>${t}</span></div>`;
-        }
-        ganttHtml += `</div>
-                <div class="grid-lines" style="width: ${maxTime * pixelsPerUnit + 20}px;">`;
-    
-        for (let t = 0; t <= maxTime; t += timeStep) {
-            ganttHtml += `<div class="grid-line" style="left: ${t * pixelsPerUnit}px;"></div>`;
-        }
-        ganttHtml += '</div></div></div>';
-    
-    // Machine rows with utilization
-    const machineMetrics = calculateTFRTAR(solution);
-    
+    // Create tasks for each job on each machine
     for (let m = 1; m <= appState.numMachines; m++) {
-        const metrics = machineMetrics.machineMetrics.find(mm => mm.machine === m);
-        const utilizationPercent = parseFloat(metrics.tfr);
-        
-        ganttHtml += `
-            <div class="gantt-machine">
-                <div class="machine-label">
-                    <div class="machine-name">Machine ${m}</div>
-                    <div class="machine-util" title="Utilisation de la Machine">
-                        <div class="util-bar" style="width: ${utilizationPercent}%;"></div>
-                    </div>
-                    <div class="machine-stat">${utilizationPercent.toFixed(1)}%</div>
-                </div>
-                <div class="machine-timeline" style="width: ${maxTime * pixelsPerUnit + 40}px;">
-                    <div class="timeline-background"></div>
-        `;
-        
-        // Task blocks for this machine
         for (let i = 1; i <= solution.order.length; i++) {
             const job = solution.order[i - 1];
-                const processingTime = appState.matrix[job] ? (appState.matrix[job][m] || 0) : 0;
-                const endTime = (solution.completion[i] && solution.completion[i][m]) ? solution.completion[i][m] : 0;
-                const duration = processingTime;
-                const startTime = Math.max(0, endTime - duration);
             
-            const left = startTime * pixelsPerUnit;
-            const width = Math.max(duration * pixelsPerUnit, 35);
-            const color = jobColors[job % jobColors.length];
+            if (!appState.matrix[job] || !solution.completion[job]) continue;
             
-            ganttHtml += `
-                <div class="task-block" 
-                    style="
-                        left: ${left}px; 
-                        width: ${width}px; 
-                        background: linear-gradient(135deg, ${color}, ${adjustColor(color, 20)});
-                    "
-                    data-tooltip="Tâche ${job} | ${startTime} - ${endTime} | Δ${duration}"
-                >
-                    <div class="task-content">
-                        <div class="task-label">T${job}</div>
-                        ${duration > 12 ? `<div class="task-duration">${duration}h</div>` : ''}
-                    </div>
-                </div>
-            `;
+            const processingTime = appState.matrix[job][m] || 0;
+            const endTime = solution.completion[job][m] || 0;
+            const startTime = Math.max(0, endTime - processingTime);
+            
+            if (endTime <= 0 || processingTime <= 0) continue;
+            
+            const taskId = `job-${job}-m${m}`;
+            
+            // Create base date and adjust by start time
+            const baseDate = new Date(2024, 0, 1, 0, 0, 0);
+            const startDate = new Date(baseDate.getTime() + startTime * 60 * 60 * 1000);
+            const endDate = new Date(baseDate.getTime() + endTime * 60 * 60 * 1000);
+            
+            ganttTasks.push({
+                id: taskId,
+                name: `M${m}: Tâche ${job}`,
+                start: startDate.toISOString().split('T')[0],
+                end: endDate.toISOString().split('T')[0],
+                progress: 100,
+                custom_class: `job-color-${job}`
+            });
+            
+            console.log(`Task: Job ${job} M${m} | Start: ${startTime} End: ${endTime} | Processing: ${processingTime}`);
         }
-        
-        ganttHtml += '</div></div>';
     }
     
-    ganttHtml += '</div>';
-    document.getElementById('ganttChart').innerHTML = ganttHtml;
+    // Initialize Frappe Gantt
+    try {
+        const gantt = new Gantt('#ganttChart', ganttTasks, {
+            header_height: 50,
+            column_width: 30,
+            step: 24,
+            view_modes: ['Jour', 'Semaine'],
+            bar_height: 35,
+            bar_corner_radius: 5,
+            arrow_curve: 5,
+            padding: 18,
+            view_mode: 'Jour',
+            date_format: 'YYYY-MM-DD HH:mm',
+            on_click: function(task) {
+                console.log('Task clicked:', task);
+            },
+            on_date_change: null,
+            on_progress_change: null,
+            on_view_change: null,
+            custom_popup_html: null,
+            language: 'en'
+        });
+        
+        // Apply custom styling for job colors
+        const style = document.createElement('style');
+        style.textContent = `
+            #ganttChart .gantt-container {
+                background-color: #f9fafb;
+            }
+            ${colors.map((color, idx) => `
+                #ganttChart .job-color-${idx + 1} {
+                    background-color: ${color} !important;
+                }
+                #ganttChart .job-color-${idx + 1}.bar-progress {
+                    background-color: ${adjustColor(color, -20)} !important;
+                }
+            `).join('')}
+            #ganttChart .bar {
+                border-radius: 5px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            #ganttChart .bar-label {
+                font-weight: 600;
+                font-size: 12px;
+            }
+        `;
+        if (!document.getElementById('gantt-custom-styles')) {
+            style.id = 'gantt-custom-styles';
+            document.head.appendChild(style);
+        }
+        
+        console.log(`Frappe Gantt initialized with ${ganttTasks.length} tasks`);
+    } catch (error) {
+        console.error('Error initializing Frappe Gantt:', error);
+        // Fallback to simple message if Gantt library not loaded
+        container.innerHTML = '<div style="padding:20px; color:red;">Erreur: Bibliothèque Gantt non chargée. Vérifiez la connexion CDN.</div>';
+    }
     
     // Display TFR/TAR metrics
     displayTFRTAR(solution);
@@ -465,13 +503,24 @@ function calculateTFRTAR(solution) {
     const globalTFR = globalMakespan > 0 ? ((totalWorkTimeAll / globalMakespan) * 100) : 0;
     const globalTAR = globalMakespan > 0 ? ((totalIdleTimeAll / globalMakespan) * 100) : 0;
     
+    // Calculate TFT (Total Flow Time) = sum of completion times of last job on each machine
+    let totalFlowTime = 0;
+    for (let j = 1; j <= solution.order.length; j++) {
+        totalFlowTime += (solution.completion[j] ? solution.completion[j][appState.numMachines] : 0);
+    }
+    
+    // Calculate TWT (Total Weighted Time) = weighted average based on job count
+    const totalWeightedTime = totalFlowTime > 0 ? Math.round(totalFlowTime / solution.order.length) : 0;
+    
     return {
         machineMetrics,
         globalTFR: globalTFR.toFixed(2),
         globalTAR: globalTAR.toFixed(2),
         totalWorkTime: totalWorkTimeAll,
         totalIdleTime: totalIdleTimeAll,
-        makespan: solution.makespan
+        makespan: solution.makespan,
+        totalFlowTime: Math.round(totalFlowTime),
+        totalWeightedTime: totalWeightedTime
     };
 }
 
@@ -496,15 +545,27 @@ function displayTFRTAR(solution) {
         </div>
         <div class="metric-card">
             <div class="metric-icon">⏱️</div>
-            <div class="metric-label">Durée Totale</div>
+            <div class="metric-label">Cmax</div>
             <div class="metric-value">${metrics.makespan}</div>
-            <div class="metric-percentage">Temps Total d'Exécution</div>
+            <div class="metric-percentage">Durée Totale (Makespan)</div>
         </div>
         <div class="metric-card">
-            <div class="metric-icon">⚙️</div>
-            <div class="metric-label">Utilisation</div>
+            <div class="metric-icon">🔢</div>
+            <div class="metric-label">TT</div>
             <div class="metric-value">${metrics.totalWorkTime}</div>
             <div class="metric-percentage">Temps de Travail Total</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon">📊</div>
+            <div class="metric-label">TFT</div>
+            <div class="metric-value">${metrics.totalFlowTime}</div>
+            <div class="metric-percentage">Temps Flux Total</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon">⚖️</div>
+            <div class="metric-label">TWT</div>
+            <div class="metric-value">${metrics.totalWeightedTime}</div>
+            <div class="metric-percentage">Temps Pondéré Total</div>
         </div>
     `;
     
