@@ -754,9 +754,7 @@ function displayTFRTAR(solution) {
         if (appState.enableTTList && appState.ttValues[jm.job] !== undefined) {
             metricsHtml += `<div class="metric-small" style="color:#dc3545;"><strong>TT</strong>: ${appState.ttValues[jm.job]}</div>`;
         }
-        if (jm.dj > 0) {
-            metricsHtml += `<div class="metric-small" style="color:#0dcaf0;"><strong>Lj</strong>: ${jm.Lj}</div>`;
-        }
+        // Lj (lateness) display removed per user request
         metricsHtml += `
                     </div>
                 </div>
