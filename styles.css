@@ -878,53 +878,67 @@ body {
 
 /* ============ TFR/TAR METRICS ============ */
 .metric-card {
-    background: white;
-    border: 2px solid #e9ecef;
-    border-radius: 12px;
-    padding: 25px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    border-radius: 14px;
+    padding: 18px 16px;
     text-align: center;
-    transition: all 0.3s ease;
+    transition: transform 0.28s ease, box-shadow 0.28s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    border: 1px solid rgba(13,110,253,0.06);
+    box-shadow: 0 6px 18px rgba(13,110,253,0.06);
 }
 
 .metric-card:hover {
-    border-color: #0d6efd;
-    box-shadow: 0 10px 25px rgba(13, 110, 253, 0.15);
-    transform: translateY(-5px);
+    transform: translateY(-6px);
+    box-shadow: 0 16px 40px rgba(13,110,253,0.12);
 }
 
-.metric-icon {
-    font-size: 2.5rem;
-    margin-bottom: 15px;
+.metric-badge {
+    background: linear-gradient(90deg, #0dcaf0 0%, #0d6efd 100%);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 0.95rem;
+    letter-spacing: 0.4px;
 }
 
-.metric-label {
-    font-size: 0.85rem;
+.metric-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+}
+
+.metric-small {
+    font-size: 0.95rem;
+    color: #495057;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #6c757d;
-    margin-bottom: 10px;
+}
+
+.metric-small strong {
+    color: #212529;
+    display: inline-block;
+    min-width: 44px;
 }
 
 .metric-value {
-    font-size: 2.5rem;
-    font-weight: 700;
+    font-size: 1.15rem;
+    font-weight: 800;
     color: #0d6efd;
-    margin-bottom: 10px;
 }
 
-.metric-percentage {
-    font-size: 1rem;
-    font-weight: 600;
+.metric-card.ter .metric-value {
     color: #198754;
 }
 
-.metric-card.tfr .metric-value {
-    color: #198754;
-}
-
-.metric-card.tar .metric-value {
-    color: #dc3545;
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
 }
 
 /* ============ CHARTS ============ */

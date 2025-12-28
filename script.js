@@ -264,7 +264,7 @@ function displayResults() {
     // Display all iterations
     const iterationsHtml = appState.allSolutions.map(solution => {
         const isBest = solution === appState.bestSolution;
-        const sequenceStr = solution.order.map(j => `T${j}`).join(' → ');
+        const sequenceStr = solution.order.map(j => `j${j}`).join(' → ');
         
         return `
             <div class="iteration-card ${isBest ? 'best' : ''}">
@@ -291,7 +291,7 @@ function displayResults() {
     // Display best solution banner
     if (appState.bestSolution) {
         const best = appState.bestSolution;
-        const sequenceStr = best.order.map((j, idx) => `Job ${j}`).join(' → ');
+        const sequenceStr = best.order.map((j) => `j${j}`).join(' → ');
         
         const bannerHtml = `
             <div class="best-solution">
@@ -542,37 +542,55 @@ function displayTFRTAR(solution) {
         metrics.globalTAR = (100 - util).toFixed(2);
     }
 
-    // Per-job metrics: processing sum, completion (Cj), flow time (Fj=Cj), waiting time (Wj = Cj - sumP)
+    // Per-job metrics: processing sum, completion (Cj), flow time (Fj=Cj), waiting time (Wj) computed
+    // as sum of idle gaps between consecutive operations for that job (uses completion by sequence position)
     for (let j = 1; j <= appState.numJobs; j++) {
         const pos = jobPos[j];
         if (!pos) continue;
         let sumP = 0;
-        for (let m = 1; m <= appState.numMachines; m++) sumP += (appState.matrix[j] && appState.matrix[j][m]) || 0;
-        const Cj = (solution.completion[pos] && solution.completion[pos][appState.numMachines]) || 0;
+        let prevEnd = null;
+        let Wj = 0;
+        let Cj = 0;
+        for (let m = 1; m <= appState.numMachines; m++) {
+            const pt = (appState.matrix[j] && appState.matrix[j][m]) || 0;
+            sumP += pt;
+            const end = (solution.completion[pos] && solution.completion[pos][m]) || 0;
+            if (pt <= 0 || end <= 0) continue;
+            const start = Math.max(0, end - pt);
+            if (prevEnd === null) {
+                // first operation: don't count idle before it
+                prevEnd = end;
+            } else {
+                if (start > prevEnd) Wj += (start - prevEnd);
+                prevEnd = Math.max(prevEnd, end);
+            }
+            Cj = prevEnd;
+        }
         const Fj = Cj;
-        const Wj = Math.max(0, Fj - sumP);
         metrics.jobMetrics.push({ job: j, sumProcessing: sumP, completion: Cj, flowTime: Fj, waitingTime: Wj });
         metrics.totalFlowTime += Fj;
         metrics.totalWaitingTime += Wj;
     }
 
-    // Render metrics: summary cards + per-job table (French labels)
-    const avgW = metrics.jobMetrics.length ? (metrics.totalWaitingTime / metrics.jobMetrics.length).toFixed(2) : '0.00';
-    let metricsHtml = '<div class="row g-3">';
-    metricsHtml += `<div class="col-3"><div class="metric-card"><div class="metric-label">Cmax</div><div class="metric-value">${metrics.makespan}</div></div></div>`;
-    metricsHtml += `<div class="col-3"><div class="metric-card"><div class="metric-label">TFR Global (%)</div><div class="metric-value">${metrics.globalTFR}%</div></div></div>`;
-    metricsHtml += `<div class="col-3"><div class="metric-card"><div class="metric-label">TAR Global (%)</div><div class="metric-value">${metrics.globalTAR}%</div></div></div>`;
-    metricsHtml += `<div class="col-3"><div class="metric-card"><div class="metric-label">TFT total</div><div class="metric-value">${metrics.totalFlowTime}</div></div></div>`;
-    metricsHtml += `<div class="col-3"><div class="metric-card"><div class="metric-label">TWT total</div><div class="metric-value">${metrics.totalWaitingTime}</div></div></div>`;
-    metricsHtml += `<div class="col-3"><div class="metric-card"><div class="metric-label">TWT moyen</div><div class="metric-value">${avgW}</div></div></div>`;
-    metricsHtml += '</div>';
-
-    // Per-job table (TWT per job)
-    metricsHtml += '<div style="margin-top:12px; overflow:auto;"><table class="table table-sm"><thead><tr><th>Job</th><th>SumP</th><th>Cj</th><th>Fj</th><th>TWT (Wj)</th></tr></thead><tbody>';
+    // Render per-job metric cards: TFA, TWT, TFT, TER
+    let metricsHtml = '<div class="metrics-grid">';
     for (const jm of metrics.jobMetrics) {
-        metricsHtml += `<tr><td>${jm.job}</td><td>${jm.sumProcessing}</td><td>${jm.completion}</td><td>${jm.flowTime}</td><td>${jm.waitingTime}</td></tr>`;
+        const ter = jm.flowTime ? ((jm.sumProcessing / jm.flowTime) * 100).toFixed(2) : '0.00';
+        metricsHtml += `
+            <div>
+                <div class="metric-card">
+                    <div class="metric-badge">j${jm.job}</div>
+                    <div class="metric-stats">
+                        <div class="metric-small"><strong>TFA</strong>: ${jm.sumProcessing}</div>
+                        <div class="metric-small"><strong>TWT</strong>: ${jm.waitingTime}</div>
+                        <div class="metric-small"><strong>TFT</strong>: ${jm.flowTime}</div>
+                        <div class="metric-small"><strong>TER</strong>: ${ter}%</div>
+                    </div>
+                </div>
+            </div>
+        `;
     }
-    metricsHtml += '</tbody></table></div>';
+    metricsHtml += '</div>';
 
     document.getElementById('tfrTarMetrics').innerHTML = metricsHtml;
     document.getElementById('tfrTarCharts').innerHTML = '<div class="text-muted">Graphiques disponibles</div>';
