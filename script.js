@@ -11,11 +11,20 @@ let appState = {
     numJobs: 9,
     matrix: null,
     bestSolution: null,
-    allSolutions: []
+    allSolutions: [],
+    enableTTList: false,
+    ttValues: {} // { jobId: ttValue }
 };
 
 // ============ INITIALIZATION ============
 document.addEventListener('DOMContentLoaded', () => {
+    // TT List checkbox listener
+    document.getElementById('enableTTList').addEventListener('change', (e) => {
+        const ttGroup = document.getElementById('ttListGroup');
+        appState.enableTTList = e.target.checked;
+        ttGroup.style.display = e.target.checked ? 'block' : 'none';
+    });
+
     // Modal button listeners
     document.getElementById('decreaseMachines').addEventListener('click', () => {
         const input = document.getElementById('numMachines');
@@ -43,6 +52,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Generate button from modal
     document.getElementById('generateBtn').addEventListener('click', () => {
+        // Parse TT list if enabled
+        if (appState.enableTTList) {
+            const ttInput = document.getElementById('ttListInput').value.trim();
+            appState.ttValues = parseTTList(ttInput);
+        }
         updateMatrixDisplay();
     });
     
@@ -53,6 +67,30 @@ document.addEventListener('DOMContentLoaded', () => {
     updateMatrixDisplay();
     updateCombinationCount();
 });
+
+function parseTTList(input) {
+    const ttObj = {};
+    if (!input) return ttObj;
+    
+    // Try format: j1:5, j2:3, j3:0
+    if (input.includes(':')) {
+        const pairs = input.split(',');
+        for (const pair of pairs) {
+            const [jobStr, valStr] = pair.trim().split(':');
+            const jobId = parseInt(jobStr.replace('j', ''));
+            const val = parseInt(valStr);
+            if (!isNaN(jobId) && !isNaN(val)) ttObj[jobId] = val;
+        }
+    } else {
+        // Try format: one value per line or space-separated
+        const values = input.split(/[\s,]+/).filter(v => v);
+        for (let i = 0; i < values.length; i++) {
+            const val = parseInt(values[i]);
+            if (!isNaN(val)) ttObj[i + 1] = val;
+        }
+    }
+    return ttObj;
+}
 
 function updateCombinationCount() {
     const machines = parseInt(document.getElementById('numMachines').value);
@@ -604,6 +642,13 @@ function displayTFRTAR(solution) {
 
     // Render per-job metric cards: rj, Sj, Cj, TWTj, TFT
     let metricsHtml = '<div style="margin-bottom:12px;"><strong>TFT (Total Flow Time):</strong> ' + metrics.totalFlowTime + ' | <strong>TT (Total Tardiness):</strong> ' + metrics.totalTardiness + '</div>';
+    if (appState.enableTTList && Object.keys(appState.ttValues).length > 0) {
+        metricsHtml += '<div style="margin-bottom:12px; padding:8px; background:#fff3cd; border-radius:6px;"><strong>TT List Input:</strong> ';
+        for (const jobId in appState.ttValues) {
+            metricsHtml += `j${jobId}=${appState.ttValues[jobId]} `;
+        }
+        metricsHtml += '</div>';
+    }
     metricsHtml += '<div class="metrics-grid">';
     for (const jm of metrics.jobMetrics) {
         metricsHtml += `
@@ -615,6 +660,11 @@ function displayTFRTAR(solution) {
                         <div class="metric-small"><strong>Sj</strong>: ${jm.Sj}</div>
                         <div class="metric-small"><strong>Cj</strong>: ${jm.Cj}</div>
                         <div class="metric-small"><strong>TWTj</strong>: ${jm.waitingTime}</div>
+        `;
+        if (appState.enableTTList && appState.ttValues[jm.job] !== undefined) {
+            metricsHtml += `<div class="metric-small" style="color:#dc3545;"><strong>TT</strong>: ${appState.ttValues[jm.job]}</div>`;
+        }
+        metricsHtml += `
                     </div>
                 </div>
             </div>

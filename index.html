@@ -97,6 +97,24 @@
                                 </label>
                             </div>
                         </div>
+
+                        <div class="config-group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="enableTTList">
+                                <label class="form-check-label" for="enableTTList">
+                                    <i class="fas fa-list me-2 text-danger"></i><strong>Afficher la liste TT (Total Tardiness)</strong>
+                                </label>
+                            </div>
+                            <small class="config-hint">Si coché, vous pouvez entrer les valeurs de retard (tardiness) pour chaque job</small>
+                        </div>
+
+                        <div class="config-group" id="ttListGroup" style="display: none;">
+                            <label class="config-label">
+                                <i class="fas fa-calendar-times text-danger me-2"></i>Liste des Retards (TT) par Job
+                            </label>
+                            <textarea class="form-control" id="ttListInput" rows="4" placeholder="Entrez les retards (tardiness) pour chaque job&#10;Format: j1:5, j2:3, j3:0&#10;ou un retard par ligne: 5&#10;3&#10;0"></textarea>
+                            <small class="config-hint">Entrez les valeurs de retard pour chaque job (séparées par virgule ou une par ligne)</small>
+                        </div>
                     </div>
 
                     <div class="config-stats mt-4 pt-4 border-top">
