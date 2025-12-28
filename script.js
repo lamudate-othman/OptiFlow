@@ -80,8 +80,9 @@ function updateMatrixDisplay() {
             <thead>
                 <tr>
                     <th>Job ⧵ Machine</th>
+                    <th>Delay</th>
     `;
-    
+
     for (let m = 1; m <= appState.numMachines; m++) {
         html += `<th>M${m}</th>`;
     }
@@ -103,13 +104,27 @@ function updateMatrixDisplay() {
     
     for (let j = 1; j <= appState.numJobs; j++) {
         html += `<tr><td><strong>Job ${j}</strong></td>`;
+        // Delay column (machine index 0)
+        const dval = (defaultMatrix[j] && defaultMatrix[j][0]) != null ? defaultMatrix[j][0] : 0;
+        html += `
+            <td>
+                <input
+                    type="number"
+                    min="0"
+                    value="${dval}"
+                    data-job="${j}"
+                    data-machine="0"
+                    class="matrix-input"
+                >
+            </td>
+        `;
         for (let m = 1; m <= appState.numMachines; m++) {
-            const value = defaultMatrix[j][m];
+            const value = (defaultMatrix[j] && defaultMatrix[j][m]) != null ? defaultMatrix[j][m] : 1;
             html += `
                 <td>
                     <input 
                         type="number" 
-                        min="1" 
+                        min="0" 
                         value="${value}" 
                         data-job="${j}" 
                         data-machine="${m}"
@@ -234,6 +249,8 @@ function calculateMakespan(order, matrix, numMachines) {
     
     for (let i = 1; i <= order.length; i++) {
         const job = order[i - 1];
+        // Respect job initial delay stored at matrix[job][0]
+        completion[i][0] = (matrix[job] && matrix[job][0]) ? matrix[job][0] : 0;
         for (let m = 1; m <= numMachines; m++) {
             completion[i][m] = Math.max(
                 completion[i - 1][m] || 0,
@@ -535,6 +552,13 @@ function displayTFRTAR(solution) {
         metrics.totalWorkTime += work;
     }
 
+    // Compute TAR and TER per machine
+    for (const mm of metrics.machineMetrics) {
+        const makespan = metrics.makespan || 1;
+        mm.TAR = ((mm.idleTime / makespan) * 100).toFixed(2);
+        mm.TER = ((mm.workTime / makespan) * 100).toFixed(2);
+    }
+
     // Global TFR (utilization %) and TAR (idle %)
     if (metrics.makespan && appState.numMachines) {
         const util = (metrics.totalWorkTime / (metrics.makespan * appState.numMachines)) * 100;
@@ -593,7 +617,25 @@ function displayTFRTAR(solution) {
     metricsHtml += '</div>';
 
     document.getElementById('tfrTarMetrics').innerHTML = metricsHtml;
-    document.getElementById('tfrTarCharts').innerHTML = '<div class="text-muted">Graphiques disponibles</div>';
+    // Render per-machine TAR/TER below job cards
+    let machineHtml = '<div class="row" style="margin-top:12px; gap:8px;">';
+    for (const mm of metrics.machineMetrics) {
+        machineHtml += `
+            <div style="min-width:160px; flex:1; max-width:220px;">
+                <div class="metric-card ter">
+                    <div class="metric-badge">M${mm.machine}</div>
+                    <div class="metric-stats">
+                        <div class="metric-small"><strong>Work</strong>: ${mm.workTime}</div>
+                        <div class="metric-small"><strong>Idle</strong>: ${mm.idleTime}</div>
+                        <div class="metric-small"><strong>TAR</strong>: ${mm.TAR}%</div>
+                        <div class="metric-small"><strong>TER</strong>: ${mm.TER}%</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    machineHtml += '</div>';
+    document.getElementById('tfrTarCharts').innerHTML = machineHtml;
 }
 
 function adjustColor(color, percent) {
