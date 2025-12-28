@@ -156,7 +156,8 @@ function updateMatrixDisplay() {
             <thead>
                 <tr>
                     <th>Job ⧵ Machine</th>
-                    <th>Delay</th>
+                    <th>rj</th>
+                    <th>dj</th>
     `;
 
     for (let m = 1; m <= appState.numMachines; m++) {
@@ -167,35 +168,49 @@ function updateMatrixDisplay() {
     
     const defaultMatrix = [
         null,
-        [0, 4, 8, 3],
-        [0, 3, 5, 7],
-        [2, 5, 2, 4],
-        [1, 2, 4, 7],
-        [3, 7, 3, 5],
-        [2, 3, 7, 6],
-        [1, 6, 6, 6],
-        [0, 7, 8, 8],
-        [2, 5, 9, 3]
+        [0, 20, 4, 8, 3],
+        [0, 25, 3, 5, 7],
+        [2, 30, 5, 2, 4],
+        [1, 35, 2, 4, 7],
+        [3, 40, 7, 3, 5],
+        [2, 45, 3, 7, 6],
+        [1, 50, 6, 6, 6],
+        [0, 55, 7, 8, 8],
+        [2, 60, 5, 9, 3]
     ];
     
     for (let j = 1; j <= appState.numJobs; j++) {
         html += `<tr><td><strong>Job ${j}</strong></td>`;
-        // Delay column (machine index 0)
-        const dval = (defaultMatrix[j] && defaultMatrix[j][0]) != null ? defaultMatrix[j][0] : 0;
+        // rj column (arrival/delay - machine index 0)
+        const rj = (defaultMatrix[j] && defaultMatrix[j][0]) != null ? defaultMatrix[j][0] : 0;
         html += `
             <td>
                 <input
                     type="number"
                     min="0"
-                    value="${dval}"
+                    value="${rj}"
                     data-job="${j}"
                     data-machine="0"
                     class="matrix-input"
                 >
             </td>
         `;
+        // dj column (delivery date - machine index -1)
+        const dj = (defaultMatrix[j] && defaultMatrix[j][1]) != null ? defaultMatrix[j][1] : 20;
+        html += `
+            <td>
+                <input
+                    type="number"
+                    min="0"
+                    value="${dj}"
+                    data-job="${j}"
+                    data-machine="-1"
+                    class="matrix-input"
+                >
+            </td>
+        `;
         for (let m = 1; m <= appState.numMachines; m++) {
-            const value = (defaultMatrix[j] && defaultMatrix[j][m]) != null ? defaultMatrix[j][m] : 1;
+            const value = (defaultMatrix[j] && defaultMatrix[j][m + 1]) != null ? defaultMatrix[j][m + 1] : 1;
             html += `
                 <td>
                     <input 
@@ -218,13 +233,32 @@ function updateMatrixDisplay() {
 
 function getMatrixData() {
     const inputs = document.querySelectorAll('.matrix-input');
-    const matrix = Array(appState.numJobs + 1).fill(null).map(() => Array(appState.numMachines + 1).fill(0));
+    const matrix = Array(appState.numJobs + 1).fill(null).map(() => Array(appState.numMachines + 2).fill(0));
     
     inputs.forEach(input => {
         const job = parseInt(input.dataset.job);
-        const machine = parseInt(input.dataset.machine);
-        matrix[job][machine] = parseInt(input.value) || 0;
+        let machine = parseInt(input.dataset.machine);
+        const value = parseInt(input.value) || 0;
+        
+        // Store rj at index 0, dj at index -1 (numMachines+1), processing times at 1..numMachines
+        if (machine === -1) {
+            machine = appState.numMachines + 1;
+        }
+        matrix[job][machine] = value;
     });
+    
+    // Auto-populate djValues from matrix if not already set
+    if (!appState.enableDjList) {
+        appState.djValues = {};
+        for (let j = 1; j <= appState.numJobs; j++) {
+            const dj = matrix[j][appState.numMachines + 1];
+            if (dj > 0) appState.djValues[j] = dj;
+        }
+        // Automatically enable dj values from matrix
+        if (Object.keys(appState.djValues).length > 0) {
+            appState.enableDjList = true;
+        }
+    }
     
     return matrix;
 }
@@ -671,13 +705,18 @@ function displayTFRTAR(solution) {
             Cj = prevEnd;
         }
         const Fj = Cj;
-        // Compute lateness Lj = max(0, Cj - dj) if dj is enabled
+        // Compute lateness Lj = max(0, Cj - dj) using dj from matrix or djValues
         let Lj = 0;
-        if (appState.enableDjList && appState.djValues[j] !== undefined) {
-            Lj = Math.max(0, Cj - appState.djValues[j]);
+        let dj = appState.djValues[j];
+        // If dj not in djValues, try to read from matrix
+        if (dj === undefined && appState.matrix[j]) {
+            dj = appState.matrix[j][appState.numMachines + 1];
+        }
+        if (dj !== undefined && dj > 0) {
+            Lj = Math.max(0, Cj - dj);
             totalTardiness += Lj;
         }
-        metrics.jobMetrics.push({ job: j, rj, Sj: Sj || 0, Cj, flowTime: Fj, waitingTime: Wj, sumProcessing: sumP, Lj });
+        metrics.jobMetrics.push({ job: j, rj, Sj: Sj || 0, Cj, flowTime: Fj, waitingTime: Wj, sumProcessing: sumP, Lj, dj: dj || 0 });
         metrics.totalFlowTime += Fj;
         metrics.totalWaitingTime += Wj;
     }
@@ -707,6 +746,7 @@ function displayTFRTAR(solution) {
                     <div class="metric-badge">j${jm.job}</div>
                     <div class="metric-stats">
                         <div class="metric-small"><strong>rj</strong>: ${jm.rj}</div>
+                        <div class="metric-small"><strong>dj</strong>: ${jm.dj}</div>
                         <div class="metric-small"><strong>Sj</strong>: ${jm.Sj}</div>
                         <div class="metric-small"><strong>Cj</strong>: ${jm.Cj}</div>
                         <div class="metric-small"><strong>TWTj</strong>: ${jm.waitingTime}</div>
@@ -714,9 +754,8 @@ function displayTFRTAR(solution) {
         if (appState.enableTTList && appState.ttValues[jm.job] !== undefined) {
             metricsHtml += `<div class="metric-small" style="color:#dc3545;"><strong>TT</strong>: ${appState.ttValues[jm.job]}</div>`;
         }
-        if (appState.enableDjList && appState.djValues[jm.job] !== undefined) {
-            const dj = appState.djValues[jm.job];
-            metricsHtml += `<div class="metric-small" style="color:#0dcaf0;"><strong>dj</strong>: ${dj} | <strong>Lj</strong>: ${jm.Lj}</div>`;
+        if (jm.dj > 0) {
+            metricsHtml += `<div class="metric-small" style="color:#0dcaf0;"><strong>Lj</strong>: ${jm.Lj}</div>`;
         }
         metricsHtml += `
                     </div>
