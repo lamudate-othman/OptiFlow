@@ -334,320 +334,186 @@ function displayResults() {
     }
 }
 
-// ============ GANTT CHART with Frappe ============
+// ============ GANTT CHART (Custom DOM-based) ============
 function displayGanttChart(solution) {
     const ganttSection = document.getElementById('ganttSection');
     ganttSection.style.display = 'block';
-    
-    // Clear previous Gantt if exists
+
     const container = document.getElementById('ganttChart');
     container.innerHTML = '';
-    
-    // Prepare task data for Frappe Gantt
-    const ganttTasks = [];
+
+    // Build a simple DOM-based Gantt chart (machine rows + numeric scale + makespan line)
     const colors = ['#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9'];
     const jobColorMap = {};
-    
-    // Create color map for jobs
-    for (let j = 1; j <= appState.numJobs; j++) {
-        jobColorMap[j] = colors[(j - 1) % colors.length];
-    }
-    
-    // Create tasks for each job on each machine
-    for (let m = 1; m <= appState.numMachines; m++) {
-        for (let i = 1; i <= solution.order.length; i++) {
-            const job = solution.order[i - 1];
-            
-            if (!appState.matrix[job] || !solution.completion[job]) continue;
-            
-            const processingTime = appState.matrix[job][m] || 0;
-            const endTime = solution.completion[job][m] || 0;
-            const startTime = Math.max(0, endTime - processingTime);
-            
-            if (endTime <= 0 || processingTime <= 0) continue;
-            
-            const taskId = `job-${job}-m${m}`;
-            
-            // Create base date and adjust by start time
-            const baseDate = new Date(2024, 0, 1, 0, 0, 0);
-            const startDate = new Date(baseDate.getTime() + startTime * 60 * 60 * 1000);
-            const endDate = new Date(baseDate.getTime() + endTime * 60 * 60 * 1000);
-            
-            ganttTasks.push({
-                id: taskId,
-                name: `M${m}: Tâche ${job}`,
-                start: startDate.toISOString().split('T')[0],
-                end: endDate.toISOString().split('T')[0],
-                progress: 100,
-                custom_class: `job-color-${job}`
-            });
-            
-            console.log(`Task: Job ${job} M${m} | Start: ${startTime} End: ${endTime} | Processing: ${processingTime}`);
-        }
-    }
-    
-    // Initialize Frappe Gantt
-    try {
-        // Check if Gantt library is loaded
-        if (typeof Gantt === 'undefined') {
-            throw new Error('Frappe Gantt library not loaded');
-        }
-        
-        const gantt = new Gantt('#ganttChart', ganttTasks, {
-            header_height: 50,
-            column_width: 30,
-            step: 24,
-            view_modes: ['Jour', 'Semaine'],
-            bar_height: 35,
-            bar_corner_radius: 5,
-            arrow_curve: 5,
-            padding: 18,
-            view_mode: 'Jour',
-            date_format: 'YYYY-MM-DD HH:mm',
-            on_click: function(task) {
-                console.log('Task clicked:', task);
-            },
-            on_date_change: null,
-            on_progress_change: null,
-            on_view_change: null,
-            custom_popup_html: null,
-            language: 'en'
-        });
-        
-        // Apply custom styling for job colors
-        const style = document.createElement('style');
-        style.textContent = `
-            #ganttChart .gantt-container {
-                background-color: #f9fafb;
-            }
-            ${colors.map((color, idx) => `
-                #ganttChart .job-color-${idx + 1} {
-                    background-color: ${color} !important;
-                }
-                #ganttChart .job-color-${idx + 1}.bar-progress {
-                    background-color: ${adjustColor(color, -20)} !important;
-                }
-            `).join('')}
-            #ganttChart .bar {
-                border-radius: 5px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            }
-            #ganttChart .bar-label {
-                font-weight: 600;
-                font-size: 12px;
-            }
+    for (let j = 1; j <= appState.numJobs; j++) jobColorMap[j] = colors[(j - 1) % colors.length];
+
+    const maxTime = Math.max(1, solution.makespan);
+    const leftCol = 120;
+    const chartWidth = 760;
+
+    // Inject styles for the DOM Gantt
+    const styleId = 'dom-gantt-styles';
+    let styleEl = document.getElementById(styleId);
+    if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = styleId;
+        styleEl.textContent = `
+            #ganttChart { position: relative; padding: 12px; background: #fff; border-radius: 8px; }
+            .gantt-row { display: block; position: relative; height: 44px; margin-bottom: 6px; }
+            .gantt-row-label { position: absolute; left: 0; top: 0; width: ${leftCol - 12}px; padding: 8px; font-weight: 700; }
+            .gantt-row-track { position: absolute; left: ${leftCol}px; right: 12px; top: 0; height: 44px; background: transparent; }
+            .gantt-bar { position: absolute; top: 6px; height: 32px; border-radius: 6px; color: #fff; display: flex; align-items: center; justify-content: center; padding: 0 8px; font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,0.08); cursor: pointer; }
+            .gantt-scale { position: absolute; left: ${leftCol}px; right: 12px; height: 28px; top: -36px; }
+            .gantt-scale .marker { position: absolute; top: 0; transform: translateX(-50%); font-size: 12px; color: #374151; }
+            .gantt-makespan { position: absolute; top: -36px; width: 2px; background: rgba(220,38,38,0.9); height: calc(100% + 36px); }
         `;
-        if (!document.getElementById('gantt-custom-styles')) {
-            style.id = 'gantt-custom-styles';
-            document.head.appendChild(style);
-        }
-        
-        console.log(`Frappe Gantt initialized with ${ganttTasks.length} tasks`);
-    } catch (error) {
-        console.error('Error initializing Frappe Gantt:', error);
-        // Fallback to simple message if Gantt library not loaded
-        container.innerHTML = '<div style="padding:20px; color:red;">Erreur: Bibliothèque Gantt non chargée. Vérifiez la connexion CDN.</div>';
+        document.head.appendChild(styleEl);
     }
-    
+
+    // Legend
+    const legend = document.createElement('div');
+    legend.style.display = 'flex';
+    legend.style.gap = '8px';
+    legend.style.flexWrap = 'wrap';
+    legend.style.marginBottom = '8px';
+    for (let j = 1; j <= appState.numJobs; j++) {
+        const it = document.createElement('div');
+        it.style.display = 'flex';
+        it.style.alignItems = 'center';
+        it.style.gap = '6px';
+        const sw = document.createElement('span');
+        sw.style.width = '14px'; sw.style.height = '14px'; sw.style.background = jobColorMap[j]; sw.style.display = 'inline-block'; sw.style.borderRadius = '3px';
+        const lbl = document.createElement('span');
+        lbl.textContent = 'Tâche ' + j;
+        lbl.style.fontSize = '13px';
+        it.appendChild(sw);
+        it.appendChild(lbl);
+        legend.appendChild(it);
+    }
+    container.appendChild(legend);
+
+    // Scale markers
+    const scale = document.createElement('div');
+    scale.className = 'gantt-scale';
+    for (let t = 0; t <= maxTime; t += Math.max(1, Math.ceil(maxTime / 12))) {
+        const mark = document.createElement('div');
+        mark.className = 'marker';
+        const left = Math.round((t / maxTime) * chartWidth);
+        mark.style.left = left + 'px';
+        mark.textContent = t;
+        scale.appendChild(mark);
+    }
+    container.appendChild(scale);
+
+    // Rows per machine
+    for (let m = 1; m <= appState.numMachines; m++) {
+        const row = document.createElement('div');
+        row.className = 'gantt-row';
+        const label = document.createElement('div');
+        label.className = 'gantt-row-label';
+        label.textContent = 'M' + m;
+        row.appendChild(label);
+        
+        const track = document.createElement('div');
+        track.className = 'gantt-row-track';
+        track.style.width = chartWidth + 'px';
+
+        // Add bars for tasks on this machine
+        for (let idx = 0; idx < solution.order.length; idx++) {
+            const job = solution.order[idx];
+            const pt = (appState.matrix[job] && appState.matrix[job][m]) || 0;
+            const end = (solution.completion[job] && solution.completion[job][m]) || 0;
+            const start = Math.max(0, end - pt);
+            if (pt <= 0 || end <= 0) continue;
+
+            const leftPx = Math.round((start / maxTime) * chartWidth);
+            const widthPx = Math.max(6, Math.round((pt / maxTime) * chartWidth));
+
+            const bar = document.createElement('div');
+            bar.className = 'gantt-bar';
+            bar.style.left = leftPx + 'px';
+            bar.style.width = widthPx + 'px';
+            bar.style.background = jobColorMap[job];
+            bar.textContent = job;
+            bar.title = `Tâche ${job} — M${m} (${pt}) [${start}..${end}]`;
+            track.appendChild(bar);
+        }
+
+        row.appendChild(track);
+        container.appendChild(row);
+    }
+
+    // Makespan line
+    const makespanLine = document.createElement('div');
+    makespanLine.className = 'gantt-makespan';
+    makespanLine.style.left = Math.round((solution.makespan / maxTime) * chartWidth) + leftCol + 'px';
+    container.appendChild(makespanLine);
+
     // Display TFR/TAR metrics
     displayTFRTAR(solution);
 }
 
-// ============ TFR/TAR CALCULATIONS ============
-function calculateTFRTAR(solution) {
-    const machineIdleTimes = Array(appState.numMachines + 1).fill(0);
-    const machineWorkTimes = Array(appState.numMachines + 1).fill(0);
-    
-    // Calculate work and idle times for each machine
-    for (let m = 1; m <= appState.numMachines; m++) {
-        let previousEndTime = 0;
-        
-        for (let i = 1; i <= solution.order.length; i++) {
-            const job = solution.order[i - 1];
-            const processingTime = appState.matrix[job][m];
-            
-            if (i === 1) {
-                // First job
-                machineIdleTimes[m] += 0; // No idle time
-                machineWorkTimes[m] += processingTime;
-                previousEndTime = processingTime;
-            } else {
-                const previousCompletion = solution.completion[i - 1][m];
-                const currentStart = previousCompletion;
-                const currentEnd = previousCompletion + processingTime;
-                
-                // Add idle time between jobs
-                machineIdleTimes[m] += Math.max(0, currentStart - previousEndTime);
-                machineWorkTimes[m] += processingTime;
-                previousEndTime = currentEnd;
-            }
-        }
-    }
-    
-    // Calculate TFR and TAR for each machine
-    const machineMetrics = [];
-    for (let m = 1; m <= appState.numMachines; m++) {
-        const totalTime = solution.makespan;
-        const tfr = totalTime > 0 ? ((machineWorkTimes[m] / totalTime) * 100) : 0;
-        const tar = totalTime > 0 ? ((machineIdleTimes[m] / totalTime) * 100) : 0;
-        
-        machineMetrics.push({
-            machine: m,
-            workTime: machineWorkTimes[m],
-            idleTime: machineIdleTimes[m],
-            tfr: tfr.toFixed(2),
-            tar: tar.toFixed(2)
-        });
-    }
-    
-    // Calculate global metrics
-    const totalWorkTimeAll = machineWorkTimes.slice(1).reduce((a, b) => a + b, 0);
-    const totalIdleTimeAll = machineIdleTimes.slice(1).reduce((a, b) => a + b, 0);
-    const globalMakespan = solution.makespan * appState.numMachines;
-    
-    const globalTFR = globalMakespan > 0 ? ((totalWorkTimeAll / globalMakespan) * 100) : 0;
-    const globalTAR = globalMakespan > 0 ? ((totalIdleTimeAll / globalMakespan) * 100) : 0;
-    
-    // Calculate TFT (Total Flow Time) = sum of completion times of last job on each machine
-    let totalFlowTime = 0;
-    for (let j = 1; j <= solution.order.length; j++) {
-        totalFlowTime += (solution.completion[j] ? solution.completion[j][appState.numMachines] : 0);
-    }
-    
-    // Calculate TWT (Total Weighted Time) = weighted average based on job count
-    const totalWeightedTime = totalFlowTime > 0 ? Math.round(totalFlowTime / solution.order.length) : 0;
-    
-    return {
-        machineMetrics,
-        globalTFR: globalTFR.toFixed(2),
-        globalTAR: globalTAR.toFixed(2),
-        totalWorkTime: totalWorkTimeAll,
-        totalIdleTime: totalIdleTimeAll,
-        makespan: solution.makespan,
-        totalFlowTime: Math.round(totalFlowTime),
-        totalWeightedTime: totalWeightedTime
-    };
-}
-
+// Build and display TFR/TAR metrics (simplified, avoids large template literals)
 function displayTFRTAR(solution) {
-    const metrics = calculateTFRTAR(solution);
-    const tfrTarSection = document.getElementById('tfrTarSection');
-    tfrTarSection.style.display = 'block';
-    
-    // Display global metrics
-    let metricsHtml = `
-        <div class="metric-card tfr">
-            <div class="metric-icon">✅</div>
-            <div class="metric-label">TFR Global</div>
-            <div class="metric-value">${metrics.globalTFR}%</div>
-            <div class="metric-percentage">Taux de Fonctionnement Réel</div>
-        </div>
-        <div class="metric-card tar">
-            <div class="metric-icon">⏸️</div>
-            <div class="metric-label">TAR Global</div>
-            <div class="metric-value">${metrics.globalTAR}%</div>
-            <div class="metric-percentage">Taux d'Arrêt Réel</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-icon">⏱️</div>
-            <div class="metric-label">Cmax</div>
-            <div class="metric-value">${metrics.makespan}</div>
-            <div class="metric-percentage">Durée Totale (Makespan)</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-icon">🔢</div>
-            <div class="metric-label">TT</div>
-            <div class="metric-value">${metrics.totalWorkTime}</div>
-            <div class="metric-percentage">Temps de Travail Total</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-icon">📊</div>
-            <div class="metric-label">TFT</div>
-            <div class="metric-value">${metrics.totalFlowTime}</div>
-            <div class="metric-percentage">Temps Flux Total</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-icon">⚖️</div>
-            <div class="metric-label">TWT</div>
-            <div class="metric-value">${metrics.totalWeightedTime}</div>
-            <div class="metric-percentage">Temps Pondéré Total</div>
-        </div>
-    `;
-    
+    const metrics = {
+        machineMetrics: [],
+        globalTFR: 0,
+        globalTAR: 0,
+        makespan: solution.makespan || 0,
+        totalWorkTime: 0,
+        totalFlowTime: 0,
+        totalWeightedTime: 0
+    };
+
+    // Compute per-machine work and idle times using solution completion times
+    for (let m = 1; m <= appState.numMachines; m++) {
+        let work = 0;
+        let idle = 0;
+        let prevEnd = 0;
+        for (let i = 0; i < solution.order.length; i++) {
+            const job = solution.order[i];
+            const pt = (appState.matrix[job] && appState.matrix[job][m]) || 0;
+            const end = (solution.completion[job] && solution.completion[job][m]) || 0;
+            const start = Math.max(0, end - pt);
+            work += pt;
+            if (start > prevEnd) idle += (start - prevEnd);
+            prevEnd = Math.max(prevEnd, end);
+        }
+        const tfr = metrics.makespan ? (work / metrics.makespan * 100) : 0;
+        const tar = metrics.makespan ? (idle / metrics.makespan * 100) : 0;
+        metrics.machineMetrics.push({ machine: m, workTime: work, idleTime: idle, tfr: tfr.toFixed(2), tar: tar.toFixed(2) });
+        metrics.totalWorkTime += work;
+    }
+
+    metrics.globalTFR = metrics.makespan && appState.numMachines ? ((metrics.totalWorkTime / (metrics.makespan * appState.numMachines)) * 100).toFixed(2) : '0.00';
+    metrics.globalTAR = (100 - parseFloat(metrics.globalTFR)).toFixed(2);
+
+    // Simple flow time calculation
+    let totalFlow = 0;
+    for (let i = 0; i < solution.order.length; i++) {
+        const job = solution.order[i];
+        const c = (solution.completion[job] && solution.completion[job][appState.numMachines]) || 0;
+        totalFlow += c;
+    }
+    metrics.totalFlowTime = totalFlow;
+    metrics.totalWeightedTime = totalFlow; // placeholder (weights not implemented)
+
+    // Render compact metrics HTML
+    let metricsHtml = '<div class="row g-3">';
+    metricsHtml += `<div class="col-12"><div class="metric-card"><div class="metric-label">Cmax</div><div class="metric-value">${metrics.makespan}</div></div></div>`;
+    metricsHtml += `<div class="col-6"><div class="metric-card"><div class="metric-label">TFR Global</div><div class="metric-value">${metrics.globalTFR}%</div></div></div>`;
+    metricsHtml += `<div class="col-6"><div class="metric-card tar"><div class="metric-label">TAR Global</div><div class="metric-value">${metrics.globalTAR}%</div></div></div>`;
+
+    for (let i = 0; i < metrics.machineMetrics.length; i++) {
+        const mm = metrics.machineMetrics[i];
+        metricsHtml += `<div class="col-md-4"><div class="metric-card"><div class="metric-label">Machine ${mm.machine}</div><div class="metric-value">${mm.workTime}</div><div class="metric-percentage">TFR ${mm.tfr}%</div></div></div>`;
+    }
+    metricsHtml += '</div>';
+
     document.getElementById('tfrTarMetrics').innerHTML = metricsHtml;
-    
-    // Display machine-level charts
-    let chartsHtml = '';
-    
-    // TFR Chart
-    chartsHtml += `
-        <div class="chart-container">
-            <div class="chart-title">📊 Taux de Fonctionnement Réel (TFR) par Machine</div>
-            <div class="bar-chart">
-    `;
-    
-    for (let i = 0; i < metrics.machineMetrics.length; i++) {
-        const m = metrics.machineMetrics[i];
-        const percentage = parseFloat(m.tfr);
-        chartsHtml += `
-            <div class="bar-container">
-                <div class="bar tfr-bar" style="height: ${Math.max(percentage * 2, 5)}px;" title="M${m.machine}: ${m.tfr}%"></div>
-                <div class="bar-value">${m.tfr}%</div>
-                <div class="bar-label">M${m.machine}</div>
-            </div>
-        `;
-    }
-    
-    chartsHtml += `
-            </div>
-            <div class="chart-stats">
-                <div class="stat-item tfr-stat">
-                    <div class="stat-label">Moyenne TFR</div>
-                    <div class="stat-value">${(metrics.machineMetrics.reduce((sum, m) => sum + parseFloat(m.tfr), 0) / metrics.machineMetrics.length).toFixed(2)}%</div>
-                </div>
-                <div class="stat-item tfr-stat">
-                    <div class="stat-label">TFR Global</div>
-                    <div class="stat-value">${metrics.globalTFR}%</div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // TAR Chart
-    chartsHtml += `
-        <div class="chart-container">
-            <div class="chart-title">⏸️ Taux d'Arrêt Réel (TAR) par Machine</div>
-            <div class="bar-chart">
-    `;
-    
-    for (let i = 0; i < metrics.machineMetrics.length; i++) {
-        const m = metrics.machineMetrics[i];
-        const percentage = parseFloat(m.tar);
-        chartsHtml += `
-            <div class="bar-container">
-                <div class="bar tar-bar" style="height: ${Math.max(percentage * 2, 5)}px;" title="M${m.machine}: ${m.tar}%"></div>
-                <div class="bar-value">${m.tar}%</div>
-                <div class="bar-label">M${m.machine}</div>
-            </div>
-        `;
-    }
-    
-    chartsHtml += `
-            </div>
-            <div class="chart-stats">
-                <div class="stat-item tar-stat">
-                    <div class="stat-label">Moyenne TAR</div>
-                    <div class="stat-value">${(metrics.machineMetrics.reduce((sum, m) => sum + parseFloat(m.tar), 0) / metrics.machineMetrics.length).toFixed(2)}%</div>
-                </div>
-                <div class="stat-item tar-stat">
-                    <div class="stat-label">TAR Global</div>
-                    <div class="stat-value">${metrics.globalTAR}%</div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.getElementById('tfrTarCharts').innerHTML = chartsHtml;
+
+    // Simple charts placeholder
+    document.getElementById('tfrTarCharts').innerHTML = '<div class="text-muted">Graphiques disponibles</div>';
 }
 
 function adjustColor(color, percent) {
