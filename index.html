@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiFlow - Système Avancé de Planification de Production</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+    cd 'C:\Users\lamud\OneDrive\Documents\gd'
+
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-gradient sticky-top shadow-sm">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold fs-5" href="#home">
+                <i class="fas fa-chart-line me-2"></i>OptiFlow
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link active" href="#home">Tableau de Bord</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#results">Résultats</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#about">À Propos</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Configuration Modal (ClickUp Style) -->
+    <div class="modal fade" id="configModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content clickup-modal">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title">
+                            <i class="fas fa-cogs me-2 text-primary"></i>Configuration du Système
+                        </h5>
+                        <p class="modal-subtitle">Configurez les paramètres de votre planification de production</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="config-section">
+                        <div class="config-group">
+                            <label class="config-label">
+                                <i class="fas fa-cube text-info me-2"></i>Nombre de Machines
+                            </label>
+                            <div class="input-group input-group-lg config-input-group">
+                                <button class="btn btn-outline-secondary" type="button" id="decreaseMachines">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <input type="number" class="form-control text-center" id="numMachines" min="2" max="10" value="3">
+                                <button class="btn btn-outline-secondary" type="button" id="increaseMachines">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            <small class="config-hint">Entre 2 et 10 machines</small>
+                        </div>
+
+                        <div class="config-group">
+                            <label class="config-label">
+                                <i class="fas fa-tasks text-warning me-2"></i>Nombre de Tâches
+                            </label>
+                            <div class="input-group input-group-lg config-input-group">
+                                <button class="btn btn-outline-secondary" type="button" id="decreaseJobs">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <input type="number" class="form-control text-center" id="numJobs" min="2" max="15" value="5">
+                                <button class="btn btn-outline-secondary" type="button" id="increaseJobs">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            <small class="config-hint">Entre 2 et 15 tâches</small>
+                        </div>
+
+                        <div class="config-group">
+                            <label class="config-label">
+                                <i class="fas fa-info-circle text-success me-2"></i>Mode Algorithme
+                            </label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="mode" id="mode-optimize" value="optimize" checked>
+                                <label class="btn btn-outline-primary" for="mode-optimize">
+                                    <i class="fas fa-bolt me-2"></i>Optimiser
+                                </label>
+
+                                <input type="radio" class="btn-check" name="mode" id="mode-analyze" value="analyze">
+                                <label class="btn btn-outline-primary" for="mode-analyze">
+                                    <i class="fas fa-chart-line me-2"></i>Analyser
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="config-stats mt-4 pt-4 border-top">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="stat-badge">
+                                    <span class="stat-label">Total Combinaisons</span>
+                                    <span class="stat-number" id="combinationCount">120</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-badge">
+                                    <span class="stat-label">Temps Estimé</span>
+                                    <span class="stat-number"><i class="fas fa-clock me-1"></i>&lt;1s</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Annuler
+                    </button>
+                    <button type="button" class="btn btn-primary btn-lg" id="generateBtn" data-bs-dismiss="modal">
+                        <i class="fas fa-play me-2"></i>Générer Matrice
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero-section py-5 text-white text-center">
+        <div class="container">
+            <h1 class="display-4 fw-bold mb-3">
+                <i class="fas fa-industry"></i> OptiFlow
+            </h1>
+            <p class="lead mb-4">Système Avancé de Planification d'Atelier et de Planification de Production</p>
+            <p class="subtitle">Maximisez l'efficacité avec des algorithmes intelligents de séquençage de tâches</p>
+            <div class="mt-4">
+                <button type="button" class="btn btn-light btn-lg me-3" data-bs-toggle="modal" data-bs-target="#configModal">
+                    <i class="fas fa-rocket"></i> Commencer
+                </button>
+                <a href="#about" class="btn btn-outline-light btn-lg">
+                    <i class="fas fa-info-circle"></i> En Savoir Plus
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="container-fluid py-5 bg-light">
+        <div class="container">
+            <!-- Matrix Section -->
+            <section class="mb-5">
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h2 class="section-title">
+                            <i class="fas fa-table text-success me-2"></i>Matrice de Temps de Traitement
+                        </h2>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header bg-gradient-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-spreadsheet me-2"></i>Temps de Traitement Tâche × Machine (minutes)
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="table-responsive" id="matrixContainer">
+                            <!-- Matrix will be generated here -->
+                        </div>
+                        <button class="btn btn-success btn-lg w-100 mt-4" id="calculateBtn">
+                            <i class="fas fa-play me-2"></i>Exécuter l'Algorithme CDS
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="resultsSection" style="display: none;">
+                <!-- Best Solution -->
+                <div id="bestSolutionContainer" class="mb-5"></div>
+
+                <!-- Iterations -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h2 class="section-title">
+                            <i class="fas fa-list-check text-primary me-2"></i>Itérations de l'Algorithme
+                        </h2>
+                    </div>
+                </div>
+                <div id="iterationsContainer" class="row g-3 mb-5"></div>
+
+                <!-- Gantt Chart -->
+                <div id="ganttSection" style="display: none;" class="mb-5">
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h2 class="section-title">
+                                <i class="fas fa-calendar-alt text-warning me-2"></i>Calendrier de Production
+                            </h2>
+                        </div>
+                    </div>
+                    <div class="card shadow-sm gantt-card">
+                        <div class="card-header bg-gradient-warning text-dark">
+                            <h5 class="mb-0">
+                                <i class="fas fa-palette me-2"></i>Légende des Couleurs des Tâches
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="legend" class="legend-grid mb-4"></div>
+                            <div id="ganttChart" class="gantt-wrapper"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TFR/TAR Metrics -->
+                <div id="tfrTarSection" style="display: none;" class="mb-5">
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h2 class="section-title">
+                                <i class="fas fa-chart-bar text-danger me-2"></i>Métriques de Performance (TFR/TAR)
+                            </h2>
+                        </div>
+                    </div>
+
+                    <!-- Metric Cards -->
+                    <div id="tfrTarMetrics" class="row g-3 mb-4"></div>
+
+                    <!-- Charts -->
+                    <div id="tfrTarCharts" class="row g-4"></div>
+                </div>
+            </section>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="row mb-5">
+                <div class="col-lg-8 mx-auto">
+                    <div class="card shadow-sm text-center">
+                        <div class="card-body py-5">
+                            <div class="mb-3">
+                                <i class="fas fa-rocket fa-4x text-primary"></i>
+                            </div>
+                            <h4>Prêt à Optimiser?</h4>
+                            <p class="text-muted mb-4">Configurez vos paramètres de production et exécutez l'algorithme CDS pour trouver la séquence optimale de tâches</p>
+                            <a href="#configure" class="btn btn-primary btn-lg">
+                                <i class="fas fa-arrow-up me-2"></i>Aller à la Configuration
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Section -->
+    <section id="about" class="py-5 bg-white">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2 class="section-title text-center mb-4">
+                        <i class="fas fa-info-circle text-primary me-2"></i>À Propos d'OptiFlow
+                    </h2>
+                    <div class="card shadow-sm">
+                        <div class="card-body p-5">
+                            <h5 class="mb-3"><i class="fas fa-brain text-info me-2"></i>Algorithme CDS</h5>
+                            <p>L'algorithme Campbell, Dudek et Smith (CDS) est une heuristique bien connue pour résoudre le problème d'ordonnancement en ateliers multiples. Il génère une série de sous-problèmes à 2 machines et applique la règle de Johnson à chacun, sélectionnant la meilleure solution globale.</p>
+                            
+                            <h5 class="mb-3 mt-4"><i class="fas fa-tachometer-alt text-success me-2"></i>Métriques Clés</h5>
+                            <ul>
+                                <li><strong>Durée Totale (Cmax):</strong> Temps total pour compléter toutes les tâches</li>
+                                <li><strong>TFR:</strong> Taux de Fonctionnement Réel - pourcentage du temps productif des machines</li>
+                                <li><strong>TAR:</strong> Taux d'Arrêt Réel - pourcentage du temps d'inactivité des machines</li>
+                            </ul>
+
+                            <h5 class="mb-3 mt-4"><i class="fas fa-cogs text-warning me-2"></i>Fonctionnement</h5>
+                            <ol>
+                                <li>Définir votre système de production (machines et tâches)</li>
+                                <li>Entrer les temps de traitement pour chaque paire tâche-machine</li>
+                                <li>Exécuter l'algorithme CDS pour trouver la séquence optimale</li>
+                                <li>Analyser les résultats avec des diagrammes de Gantt et des métriques de performance</li>
+                            </ol>
+
+                            <div class="alert alert-info mt-4" role="alert">
+                                <i class="fas fa-lightbulb me-2"></i>
+                                <strong>Conseil:</strong> Une durée totale plus courte et des valeurs TFR plus élevées indiquent une meilleure efficacité d'ordonnancement.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white text-center py-4 mt-5">
+        <div class="container">
+            <p class="mb-2">
+                <i class="fas fa-copyright me-2"></i>2025 OptiFlow - Planification Avancée de Production
+            </p>
+            <p class="text-muted">Alimenté par l'Algorithme CDS & Bootstrap | Optimisation de l'efficacité de production</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom Script -->
+    <script src="script.js"></script>
+</body>
+</html>
