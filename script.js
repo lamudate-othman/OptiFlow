@@ -683,8 +683,6 @@ function displayTFRTAR(solution) {
                     <div class="metric-stats">
                         <div class="metric-small"><strong>TFR i</strong>: ${mm.TER}%</div>
                         <div class="metric-small"><strong>TAR i</strong>: ${mm.TAR}%</div>
-                        <div class="metric-small"><strong>Work</strong>: ${mm.workTime}</div>
-                        <div class="metric-small"><strong>Idle</strong>: ${mm.idleTime}</div>
                     </div>
                 </div>
             </div>
