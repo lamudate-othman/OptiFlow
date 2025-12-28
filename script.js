@@ -339,17 +339,17 @@ function displayGanttChart(solution) {
         <div class="gantt-timeline-header" style="width: ${maxTime * pixelsPerUnit + 40}px;">
             <div class="time-scale">`;
     
-    const timeStep = Math.ceil(maxTime / 12);
-    for (let t = 0; t <= maxTime; t += timeStep) {
-        ganttHtml += `<div class="time-marker" style="left: ${t * pixelsPerUnit}px;"><span>${t}</span></div>`;
-    }
-    ganttHtml += `</div>
-            <div class="grid-lines" style="width: ${maxTime * pixelsPerUnit + 20}px;">`;
+        const timeStep = Math.ceil(maxTime / 12);
+        for (let t = 0; t <= maxTime; t += timeStep) {
+            ganttHtml += `<div class="time-marker" style="left: ${t * pixelsPerUnit}px;"><span>${t}</span></div>`;
+        }
+        ganttHtml += `</div>
+                <div class="grid-lines" style="width: ${maxTime * pixelsPerUnit + 20}px;">`;
     
-    for (let t = 0; t <= maxTime; t += timeStep) {
-        ganttHtml += `<div class="grid-line" style="left: ${t * pixelsPerUnit}px;"></div>`;
-    }
-    ganttHtml += '</div></div></div>';
+        for (let t = 0; t <= maxTime; t += timeStep) {
+            ganttHtml += `<div class="grid-line" style="left: ${t * pixelsPerUnit}px;"></div>`;
+        }
+        ganttHtml += '</div></div></div>';
     
     // Machine rows with utilization
     const machineMetrics = calculateTFRTAR(solution);
@@ -374,9 +374,10 @@ function displayGanttChart(solution) {
         // Task blocks for this machine
         for (let i = 1; i <= solution.order.length; i++) {
             const job = solution.order[i - 1];
-            const startTime = i === 1 ? 0 : solution.completion[i - 1][m];
-            const endTime = solution.completion[i][m];
-            const duration = endTime - startTime;
+                const processingTime = appState.matrix[job] ? (appState.matrix[job][m] || 0) : 0;
+                const endTime = (solution.completion[i] && solution.completion[i][m]) ? solution.completion[i][m] : 0;
+                const duration = processingTime;
+                const startTime = Math.max(0, endTime - duration);
             
             const left = startTime * pixelsPerUnit;
             const width = Math.max(duration * pixelsPerUnit, 35);
