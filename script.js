@@ -568,13 +568,16 @@ function displayTFRTAR(solution) {
 
     // Per-job metrics: processing sum, completion (Cj), flow time (Fj=Cj), waiting time (Wj) computed
     // as sum of idle gaps between consecutive operations for that job (uses completion by sequence position)
+    let totalTardiness = 0;
     for (let j = 1; j <= appState.numJobs; j++) {
         const pos = jobPos[j];
         if (!pos) continue;
+        const rj = (appState.matrix[j] && appState.matrix[j][0]) || 0; // job arrival/delay
         let sumP = 0;
         let prevEnd = null;
         let Wj = 0;
         let Cj = 0;
+        let Sj = null; // job start date on first machine
         for (let m = 1; m <= appState.numMachines; m++) {
             const pt = (appState.matrix[j] && appState.matrix[j][m]) || 0;
             sumP += pt;
@@ -582,7 +585,8 @@ function displayTFRTAR(solution) {
             if (pt <= 0 || end <= 0) continue;
             const start = Math.max(0, end - pt);
             if (prevEnd === null) {
-                // first operation: don't count idle before it
+                // first operation: record start date and don't count idle before it
+                Sj = start;
                 prevEnd = end;
             } else {
                 if (start > prevEnd) Wj += (start - prevEnd);
@@ -591,24 +595,26 @@ function displayTFRTAR(solution) {
             Cj = prevEnd;
         }
         const Fj = Cj;
-        metrics.jobMetrics.push({ job: j, sumProcessing: sumP, completion: Cj, flowTime: Fj, waitingTime: Wj });
+        totalTardiness += rj;
+        metrics.jobMetrics.push({ job: j, rj, Sj: Sj || 0, Cj, flowTime: Fj, waitingTime: Wj, sumProcessing: sumP });
         metrics.totalFlowTime += Fj;
         metrics.totalWaitingTime += Wj;
     }
+    metrics.totalTardiness = totalTardiness;
 
-    // Render per-job metric cards: TFA, TWT, TFT, TER
-    let metricsHtml = '<div class="metrics-grid">';
+    // Render per-job metric cards: rj, Sj, Cj, TWTj, TFT
+    let metricsHtml = '<div style="margin-bottom:12px;"><strong>TFT (Total Flow Time):</strong> ' + metrics.totalFlowTime + ' | <strong>TT (Total Tardiness):</strong> ' + metrics.totalTardiness + '</div>';
+    metricsHtml += '<div class="metrics-grid">';
     for (const jm of metrics.jobMetrics) {
-        const ter = jm.flowTime ? ((jm.sumProcessing / jm.flowTime) * 100).toFixed(2) : '0.00';
         metricsHtml += `
             <div>
                 <div class="metric-card">
                     <div class="metric-badge">j${jm.job}</div>
                     <div class="metric-stats">
-                        <div class="metric-small"><strong>TFA</strong>: ${jm.sumProcessing}</div>
-                        <div class="metric-small"><strong>TWT</strong>: ${jm.waitingTime}</div>
-                        <div class="metric-small"><strong>TFT</strong>: ${jm.flowTime}</div>
-                        <div class="metric-small"><strong>TER</strong>: ${ter}%</div>
+                        <div class="metric-small"><strong>rj</strong>: ${jm.rj}</div>
+                        <div class="metric-small"><strong>Sj</strong>: ${jm.Sj}</div>
+                        <div class="metric-small"><strong>Cj</strong>: ${jm.Cj}</div>
+                        <div class="metric-small"><strong>TWTj</strong>: ${jm.waitingTime}</div>
                     </div>
                 </div>
             </div>
@@ -617,18 +623,18 @@ function displayTFRTAR(solution) {
     metricsHtml += '</div>';
 
     document.getElementById('tfrTarMetrics').innerHTML = metricsHtml;
-    // Render per-machine TAR/TER below job cards
-    let machineHtml = '<div class="row" style="margin-top:12px; gap:8px;">';
+    // Render per-machine TAR/TER (TAR i, TFR i) below job cards
+    let machineHtml = '<div style="margin-top:12px; margin-bottom:8px;"><strong>Machine Metrics (TAR i = idle %, TFR i = work %)</strong></div><div class="row" style="gap:8px;">';
     for (const mm of metrics.machineMetrics) {
         machineHtml += `
             <div style="min-width:160px; flex:1; max-width:220px;">
                 <div class="metric-card ter">
                     <div class="metric-badge">M${mm.machine}</div>
                     <div class="metric-stats">
+                        <div class="metric-small"><strong>TFR i</strong>: ${mm.TER}%</div>
+                        <div class="metric-small"><strong>TAR i</strong>: ${mm.TAR}%</div>
                         <div class="metric-small"><strong>Work</strong>: ${mm.workTime}</div>
                         <div class="metric-small"><strong>Idle</strong>: ${mm.idleTime}</div>
-                        <div class="metric-small"><strong>TAR</strong>: ${mm.TAR}%</div>
-                        <div class="metric-small"><strong>TER</strong>: ${mm.TER}%</div>
                     </div>
                 </div>
             </div>
