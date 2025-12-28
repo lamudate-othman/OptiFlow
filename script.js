@@ -662,11 +662,13 @@ function displayTFRTAR(solution) {
         metrics.totalWorkTime += work;
     }
 
-    // Compute TAR and TER per machine
+    // Compute TFR and TAR per machine (TFR = work%, TAR = 100 - TFR)
     for (const mm of metrics.machineMetrics) {
         const makespan = metrics.makespan || 1;
-        mm.TAR = ((mm.idleTime / makespan) * 100).toFixed(2);
-        mm.TER = ((mm.workTime / makespan) * 100).toFixed(2);
+        // compute raw percentages then format
+        const tfrVal = (mm.workTime / makespan) * 100;
+        mm.TFR = tfrVal.toFixed(2);
+        mm.TAR = (100 - tfrVal).toFixed(2);
     }
 
     // Global TFR (utilization %) and TAR (idle %)
@@ -772,7 +774,7 @@ function displayTFRTAR(solution) {
                 <div class="metric-card ter">
                     <div class="metric-badge">M${mm.machine}</div>
                     <div class="metric-stats">
-                        <div class="metric-small"><strong>TFR i</strong>: ${mm.TER}%</div>
+                        <div class="metric-small"><strong>TFR i</strong>: ${mm.TFR}%</div>
                         <div class="metric-small"><strong>TAR i</strong>: ${mm.TAR}%</div>
                     </div>
                 </div>
