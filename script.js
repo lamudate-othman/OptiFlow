@@ -388,6 +388,11 @@ function displayGanttChart(solution) {
     
     // Initialize Frappe Gantt
     try {
+        // Check if Gantt library is loaded
+        if (typeof Gantt === 'undefined') {
+            throw new Error('Frappe Gantt library not loaded');
+        }
+        
         const gantt = new Gantt('#ganttChart', ganttTasks, {
             header_height: 50,
             column_width: 30,
