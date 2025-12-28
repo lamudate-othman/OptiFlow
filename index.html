@@ -67,7 +67,7 @@
 
                         <div class="config-group">
                             <label class="config-label">
-                                <i class="fas fa-tasks text-warning me-2"></i>Nombre de Tâches
+                                <i class="fas fa-tasks text-warning me-2"></i>Nombre de Jobs
                             </label>
                             <div class="input-group input-group-lg config-input-group">
                                 <button class="btn btn-outline-secondary" type="button" id="decreaseJobs">
@@ -78,7 +78,7 @@
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </div>
-                            <small class="config-hint">Entre 2 et 15 tâches</small>
+                            <small class="config-hint">Entre 2 et 15 jobs</small>
                         </div>
 
                         <div class="config-group">
@@ -135,7 +135,7 @@
                 <i class="fas fa-industry"></i> OptiFlow
             </h1>
             <p class="lead mb-4">Système Avancé de Planification d'Atelier et de Planification de Production</p>
-            <p class="subtitle">Maximisez l'efficacité avec des algorithmes intelligents de séquençage de tâches</p>
+            <p class="subtitle">Maximisez l'efficacité avec des algorithmes intelligents de séquençage de jobs</p>
             <div class="mt-4">
                 <button type="button" class="btn btn-light btn-lg me-3" data-bs-toggle="modal" data-bs-target="#configModal">
                     <i class="fas fa-rocket"></i> Commencer
@@ -162,8 +162,8 @@
 
                 <div class="card shadow-sm">
                     <div class="card-header bg-gradient-success text-white">
-                        <h5 class="mb-0">
-                            <i class="fas fa-spreadsheet me-2"></i>Temps de Traitement Tâche × Machine (minutes)
+                            <h5 class="mb-0">
+                            <i class="fas fa-spreadsheet me-2"></i>Temps de Traitement Job × Machine (minutes)
                         </h5>
                     </div>
                     <div class="card-body p-4">
@@ -240,7 +240,7 @@
                                 <i class="fas fa-rocket fa-4x text-primary"></i>
                             </div>
                             <h4>Prêt à Optimiser?</h4>
-                            <p class="text-muted mb-4">Configurez vos paramètres de production et exécutez l'algorithme CDS pour trouver la séquence optimale de tâches</p>
+                            <p class="text-muted mb-4">Configurez vos paramètres de production et exécutez l'algorithme CDS pour trouver la séquence optimale de jobs</p>
                             <a href="#configure" class="btn btn-primary btn-lg">
                                 <i class="fas fa-arrow-up me-2"></i>Aller à la Configuration
                             </a>
@@ -266,15 +266,15 @@
                             
                             <h5 class="mb-3 mt-4"><i class="fas fa-tachometer-alt text-success me-2"></i>Métriques Clés</h5>
                             <ul>
-                                <li><strong>Durée Totale (Cmax):</strong> Temps total pour compléter toutes les tâches</li>
+                                <li><strong>Durée Totale (Cmax):</strong> Temps total pour compléter tous les jobs</li>
                                 <li><strong>TFR:</strong> Taux de Fonctionnement Réel - pourcentage du temps productif des machines</li>
                                 <li><strong>TAR:</strong> Taux d'Arrêt Réel - pourcentage du temps d'inactivité des machines</li>
                             </ul>
 
                             <h5 class="mb-3 mt-4"><i class="fas fa-cogs text-warning me-2"></i>Fonctionnement</h5>
                             <ol>
-                                <li>Définir votre système de production (machines et tâches)</li>
-                                <li>Entrer les temps de traitement pour chaque paire tâche-machine</li>
+                                <li>Définir votre système de production (machines et jobs)</li>
+                                <li>Entrer les temps de traitement pour chaque paire job-machine</li>
                                 <li>Exécuter l'algorithme CDS pour trouver la séquence optimale</li>
                                 <li>Analyser les résultats avec des diagrammes de Gantt et des métriques de performance</li>
                             </ol>
