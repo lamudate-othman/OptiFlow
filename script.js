@@ -13,7 +13,9 @@ let appState = {
     bestSolution: null,
     allSolutions: [],
     enableTTList: false,
-    ttValues: {} // { jobId: ttValue }
+    ttValues: {}, // { jobId: ttValue }
+    enableDjList: false,
+    djValues: {} // { jobId: djValue }
 };
 
 // ============ INITIALIZATION ============
@@ -23,6 +25,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const ttGroup = document.getElementById('ttListGroup');
         appState.enableTTList = e.target.checked;
         ttGroup.style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    // dj List checkbox listener
+    document.getElementById('enableDjList').addEventListener('change', (e) => {
+        const djGroup = document.getElementById('djListGroup');
+        appState.enableDjList = e.target.checked;
+        djGroup.style.display = e.target.checked ? 'block' : 'none';
     });
 
     // Modal button listeners
@@ -57,6 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const ttInput = document.getElementById('ttListInput').value.trim();
             appState.ttValues = parseTTList(ttInput);
         }
+        // Parse dj list if enabled
+        if (appState.enableDjList) {
+            const djInput = document.getElementById('djListInput').value.trim();
+            appState.djValues = parseDjList(djInput);
+        }
         updateMatrixDisplay();
     });
     
@@ -90,6 +104,30 @@ function parseTTList(input) {
         }
     }
     return ttObj;
+}
+
+function parseDjList(input) {
+    const djObj = {};
+    if (!input) return djObj;
+    
+    // Try format: j1:20, j2:25, j3:30
+    if (input.includes(':')) {
+        const pairs = input.split(',');
+        for (const pair of pairs) {
+            const [jobStr, valStr] = pair.trim().split(':');
+            const jobId = parseInt(jobStr.replace('j', ''));
+            const val = parseInt(valStr);
+            if (!isNaN(jobId) && !isNaN(val)) djObj[jobId] = val;
+        }
+    } else {
+        // Try format: one value per line or space-separated
+        const values = input.split(/[\s,]+/).filter(v => v);
+        for (let i = 0; i < values.length; i++) {
+            const val = parseInt(values[i]);
+            if (!isNaN(val)) djObj[i + 1] = val;
+        }
+    }
+    return djObj;
 }
 
 function updateCombinationCount() {
@@ -649,6 +687,13 @@ function displayTFRTAR(solution) {
         }
         metricsHtml += '</div>';
     }
+    if (appState.enableDjList && Object.keys(appState.djValues).length > 0) {
+        metricsHtml += '<div style="margin-bottom:12px; padding:8px; background:#d1ecf1; border-radius:6px;"><strong>dj (Due Dates):</strong> ';
+        for (const jobId in appState.djValues) {
+            metricsHtml += `j${jobId}=${appState.djValues[jobId]} `;
+        }
+        metricsHtml += '</div>';
+    }
     metricsHtml += '<div class="metrics-grid">';
     for (const jm of metrics.jobMetrics) {
         metricsHtml += `
@@ -663,6 +708,11 @@ function displayTFRTAR(solution) {
         `;
         if (appState.enableTTList && appState.ttValues[jm.job] !== undefined) {
             metricsHtml += `<div class="metric-small" style="color:#dc3545;"><strong>TT</strong>: ${appState.ttValues[jm.job]}</div>`;
+        }
+        if (appState.enableDjList && appState.djValues[jm.job] !== undefined) {
+            const dj = appState.djValues[jm.job];
+            const tardiness = Math.max(0, jm.Cj - dj);
+            metricsHtml += `<div class="metric-small" style="color:#0dcaf0;"><strong>dj</strong>: ${dj} | <strong>Lj</strong>: ${tardiness}</div>`;
         }
         metricsHtml += `
                     </div>

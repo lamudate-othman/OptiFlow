@@ -108,6 +108,23 @@
                             <small class="config-hint">Si coché, vous pouvez entrer les valeurs de retard (tardiness) pour chaque job</small>
                         </div>
 
+                        <div class="config-group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="enableDjList">
+                                <label class="form-check-label" for="enableDjList">
+                                    <i class="fas fa-calendar-check me-2 text-info"></i><strong>Afficher la liste dj (Date de Livraison)</strong>
+                                </label>
+                            </div>
+                            <small class="config-hint">Si coché, vous pouvez entrer les dates de livraison (due dates) pour chaque job</small>
+                        </div>
+
+                        <div class="config-group" id="djListGroup" style="display: none;">
+                            <label class="config-label">
+                                <i class="fas fa-hourglass-end text-info me-2"></i>Liste des Dates de Livraison (dj) par Job
+                            </label>
+                            <textarea class="form-control" id="djListInput" rows="4" placeholder="Entrez les dates de livraison pour chaque job&#10;Format: j1:20, j2:25, j3:30&#10;ou une date par ligne: 20&#10;25&#10;30"></textarea>
+                            <small class="config-hint">Entrez les dates de livraison pour chaque job (séparées par virgule ou une par ligne)</small>
+                        </div>
                         <div class="config-group" id="ttListGroup" style="display: none;">
                             <label class="config-label">
                                 <i class="fas fa-calendar-times text-danger me-2"></i>Liste des Retards (TT) par Job
